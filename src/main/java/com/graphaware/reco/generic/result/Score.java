@@ -13,13 +13,11 @@
  * the GNU General Public License along with this program.  If not, see
  * <http://www.gnu.org/licenses/>.
  */
-
 package com.graphaware.reco.generic.result;
 
 import java.util.*;
+import com.graphaware.reco.generic.util.AtomicFloat;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.springframework.util.Assert.hasLength;
 import static org.springframework.util.Assert.notNull;
 
@@ -30,8 +28,9 @@ import static org.springframework.util.Assert.notNull;
  */
 public class Score implements Comparable<Score> {
 
-    private final AtomicInteger totalScore = new AtomicInteger(0);
-    private final ConcurrentHashMap<String, AtomicInteger> scoreParts = new ConcurrentHashMap<>();
+    private final AtomicFloat totalScore = new AtomicFloat(0);
+
+    private final ConcurrentHashMap<String, AtomicFloat> scoreParts = new ConcurrentHashMap<>();
 
     /**
      * Add a partial score to this composite score.
@@ -39,20 +38,21 @@ public class Score implements Comparable<Score> {
      * @param scoreName name of the partial score. Must not be <code>null</code> or empty.
      * @param value     score value.
      */
-    public void add(String scoreName, int value) {
+    /**
+     * Add a partial score to this composite score.
+     *  @param scoreName name of the partial score. Must not be <code>null</code> or empty.
+     * @param value     score value.
+     */
+    public void add(String scoreName, float value) {
         notNull(scoreName);
         hasLength(scoreName);
-
-        AtomicInteger score = scoreParts.get(scoreName);
-
+        AtomicFloat score = scoreParts.get(scoreName);
         if (score == null) {
-            score = scoreParts.putIfAbsent(scoreName, new AtomicInteger(0));
+            score = scoreParts.putIfAbsent(scoreName, new AtomicFloat(0f));
         }
-
         if (score == null) {
             score = scoreParts.get(scoreName);
         }
-
         score.addAndGet(value);
         totalScore.addAndGet(value);
     }
@@ -65,10 +65,9 @@ public class Score implements Comparable<Score> {
      * merged to.
      */
     public Score merge(Score score) {
-        for (Map.Entry<String, AtomicInteger> entry : score.scoreParts.entrySet()) {
+        for (Map.Entry<String, AtomicFloat> entry : score.scoreParts.entrySet()) {
             this.add(entry.getKey(), entry.getValue().get());
         }
-
         return this;
     }
 
@@ -77,7 +76,7 @@ public class Score implements Comparable<Score> {
      *
      * @return total value.
      */
-    public int getTotalScore() {
+    public float getTotalScore() {
         return totalScore.get();
     }
 
@@ -86,13 +85,11 @@ public class Score implements Comparable<Score> {
      *
      * @return composite score parts.
      */
-    public Map<String, Integer> getScoreParts() {
-        Map<String, Integer> result = new TreeMap<>();
-
-        for (Map.Entry<String, AtomicInteger> entry : scoreParts.entrySet()) {
+    public Map<String, Float> getScoreParts() {
+        Map<String, Float> result = new TreeMap<>();
+        for (Map.Entry<String, AtomicFloat> entry : scoreParts.entrySet()) {
             result.put(entry.getKey(), entry.getValue().get());
         }
-
         return result;
     }
 
@@ -102,7 +99,7 @@ public class Score implements Comparable<Score> {
      * @param scoreName name of the partial score.
      * @return value of the score, 0 if no such partial score has been added.
      */
-    public int get(String scoreName) {
+    public float get(String scoreName) {
         if (scoreParts.containsKey(scoreName)) {
             return scoreParts.get(scoreName).get();
         } else {
@@ -115,6 +112,6 @@ public class Score implements Comparable<Score> {
      */
     @Override
     public int compareTo(Score o) {
-        return Integer.compare(getTotalScore(), o.getTotalScore());
+        return Float.compare(getTotalScore(), o.getTotalScore());
     }
 }
